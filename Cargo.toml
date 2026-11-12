@@ -1,0 +1,9 @@
+[package]
+name = "axum-image-tool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["multipart"] }
+tokio = { version = "1", features = ["full"] }
+image = "0.25"
