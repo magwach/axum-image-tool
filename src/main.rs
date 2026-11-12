@@ -203,10 +203,15 @@ fn app() -> Router {
 
 #[tokio::main]
 async fn main() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3000);
+
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
-        .expect("failed to bind to port 3000");
-    println!("Listening on http://127.0.0.1:3000");
+        .expect("failed to bind port");
+    println!("Listening on port {port}");
     axum::serve(listener, app()).await.expect("server error");
 }
 
