@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Axum Image Tool</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 480px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: block;
+        margin: 0.9rem 0 0.25rem;
+        font-weight: 600;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 0.4rem;
+        box-sizing: border-box;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .check input {
+        width: auto;
+      }
+      .row {
+        display: flex;
+        gap: 0.6rem;
+      }
+      button {
+        margin-top: 1.2rem;
+        padding: 0.6rem 1.2rem;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 1rem;
+        min-height: 1.5rem;
+      }
+      #result {
+        max-width: 100%;
+        margin-top: 0.5rem;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Image Tool</h1>
+    <form id="form">
+      <label for="api_key">API key</label>
+      <input
+        id="api_key"
+        name="api_key"
+        type="password"
+        placeholder="imgk_..."
+        required
+      />
+
+      <label for="image">Image</label>
+      <input id="image" name="image" type="file" accept="image/*" required />
+
+      <label for="width">Width (px, optional)</label>
+      <input id="width" name="width" type="number" min="1" max="8192" />
+
+      <label for="height">Height (px, optional)</label>
+      <input id="height" name="height" type="number" min="1" max="8192" />
+
+      <label for="rotate">Rotate (clockwise)</label>
+      <select id="rotate" name="rotate">
+        <option value="0">None</option>
+        <option value="90">90°</option>
+        <option value="180">180°</option>
+        <option value="270">270°</option>
+      </select>
+
+      <label for="format">Output format</label>
+      <select id="format" name="format">
+        <option value="png">PNG</option>
+        <option value="jpeg">JPEG</option>
+      </select>
+
+      <label class="check"
+        ><input type="checkbox" name="grayscale" /> Convert to grayscale</label
+      >
+
+      <div class="row">
+        <button type="submit">Process</button>
+        <button type="button" id="balance-btn">Check balance</button>
+      </div>
+    </form>
+
+    <p id="status"></p>
+    <img id="result" alt="Processed image" />
+
+    <script>
+      const form = document.getElementById("form");
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
+      const keyEl = document.getElementById("api_key");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusEl.textContent = "Processing...";
+        resultEl.style.display = "none";
+
+        const data = new FormData(form);
+        data.delete("api_key");
+
+        try {
+          const res = await fetch("/process", {
+            method: "POST",
+            headers: { "x-api-key": keyEl.value.trim() },
+            body: data,
+          });
+
+          if (!res.ok) {
+            statusEl.textContent = `Error ${res.status}: ${await res.text()}`;
+            return;
+          }
+
+          const blob = await res.blob();
+          resultEl.src = URL.createObjectURL(blob);
+          resultEl.style.display = "block";
+
+          const cost = res.headers.get("x-request-cost-kes");
+          const balance = res.headers.get("x-balance-kes");
+          statusEl.textContent = `Cost: KES ${cost} · Balance left: KES ${balance}`;
+        } catch (err) {
+          statusEl.textContent = "Request failed: " + err.message;
+        }
+      });
+
+      document
+        .getElementById("balance-btn")
+        .addEventListener("click", async () => {
+          try {
+            const res = await fetch("/billing/balance", {
+              headers: { "x-api-key": keyEl.value.trim() },
+            });
+            if (!res.ok) {
+              statusEl.textContent = `Error ${res.status}: ${await res.text()}`;
+              return;
+            }
+            const info = await res.json();
+            statusEl.textContent = `${info.name}: balance KES ${info.balance_kes}`;
+          } catch (err) {
+            statusEl.textContent = "Request failed: " + err.message;
+          }
+        });
+    </script>
+  </body>
+</html>
